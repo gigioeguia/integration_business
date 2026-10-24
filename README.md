@@ -38,3 +38,46 @@ This app can use GitHub Actions for CI. The following workflows are configured:
 ### License
 
 mit
+
+
+##########
+# WhatsApp
+/api/method/integration_business.api.whatsapp.webhook
+
+# WhatsApp
+/api/method/integration_business.api.messenger.webhook
+
+# crm
+/api/method/integration_business.api.crm.create_lead
+
+# landing pages
+/api/method/integration_business.api.landing.capture
+
+
+# Test Local
+bench new-site miIntegracion.local
+bench --site miIntegracion.local install-app integration_business
+
+# run
+bench start
+
+CREATE USER 'frappe_admin'@'localhost' IDENTIFIED BY 'admin01';
+GRANT ALL PRIVILEGES ON *.* TO 'frappe_admin'@'localhost' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+EXIT;
+
+# Configurar token meta
+meta_verify_token "verify_seguro_123"
+
+# local
+bench --site miIntegracion.local set-config meta_verify_token 'verify_seguro_123'
+
+# local probar
+
+curl -i -G 'http://miIntegracion.local:8000/api/method/integration_business.api.whatsapp.webhook' \
+  --data-urlencode 'hub.mode=subscribe' \
+  --data-urlencode 'hub.verify_token=verify_seguro_123' \
+  --data-urlencode 'hub.challenge=123456'
+
+# usar en servidor
+https://<tu-sitio>.frappe.cloud/api/method/integration_business.api.whatsapp.webhook
