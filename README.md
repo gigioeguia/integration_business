@@ -68,6 +68,7 @@ EXIT;
 
 # Configurar token meta
 meta_verify_token "verify_seguro_123"
+TU_PAGE_ACCESS_TOKEN
 
 # local
 bench --site miIntegracion.local set-config meta_verify_token 'verify_seguro_123'
@@ -80,10 +81,24 @@ curl -i -G 'http://miIntegracion.local:8000/api/method/integration_business.api.
   --data-urlencode 'hub.challenge=123456'
 
 # usar en servidor
-https://<tu-sitio>.frappe.cloud/api/method/integration_business.api.messenger.webhook
+https://erp-code-connect.v.frappe.cloud/api/method/integration_business.api.messenger.webhook
 
 curl -i -G "https://erp-code-connect.v.frappe.cloud/api/method/integration_business.api.messenger.webhook" \
   --data-urlencode "hub.mode=subscribe" \
   --data-urlencode "hub.verify_token=code_connect_1234" \
   --data-urlencode "hub.challenge=123456"
 
+# arquitectura
+Facebook Messenger
+        ↓
+Webhook Messenger
+        ↓
+ERPNext Lead
+        ↓
+WhatsApp Chatbot Flow
+        ↓
+IA / Contexto
+        ↓
+Respuesta
+        ↓
+Messenger
