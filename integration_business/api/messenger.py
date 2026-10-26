@@ -159,38 +159,26 @@ def process_messenger_event(messaging_event):
 
         if existing_lead:
             lead_name = existing_lead
+            updated = update_lead_data(sender_id, message_text)
 
-            if should_create_lead(sender_id, message_text):
-                updated = update_lead_data(sender_id, message_text)
+            if not updated:
+                step = frappe.db.get_value(
+                    "Lead",
+                    {"custom_messenger_id": sender_id},
+                    "custom_capture_step",
+                )
 
-                if not updated:
-                    step = frappe.db.get_value(
-                        "Lead",
-                        {"custom_messenger_id": sender_id},
-                        "custom_capture_step",
-                    )
+                if step == "email":
+                    reply = "Ese correo no parece válido. Por favor, escríbelo nuevamente."
+                elif step == "phone":
+                    reply = "No pude registrar ese teléfono. Por favor, escríbelo nuevamente."
+                else:
+                    reply = get_next_question(sender_id)
 
-                    if step == "email":
-                        reply = (
-                            "Ese correo no parece válido. "
-                            "Por favor, escríbelo nuevamente."
-                        )
-                    elif step == "phone":
-                        reply = (
-                            "No pude registrar ese teléfono. "
-                            "Por favor, escríbelo nuevamente."
-                        )
-                    else:
-                        reply = get_next_question(sender_id)
-
-                    save_bot_response(lead_name, reply)
-                    send_messenger_message(sender_id, reply)
-
-                    # Se procesó y respondió; evitar duplicar la respuesta.
-                    frappe.cache().set_value(
-                        cache_key, 1, expires_in_sec=86400
-                    )
-                    return
+                save_bot_response(lead_name, reply)
+                send_messenger_message(sender_id, reply)
+                frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
+                return
         else:
             lead_name = create_initial_lead(sender_id)
 

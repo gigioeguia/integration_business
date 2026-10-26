@@ -100,14 +100,6 @@ def create_initial_lead(sender_id):
 """
 actualizar los datos de un Lead existente cuando recibe un nuevo mensaje desde Messenger
 """
-import frappe
-from frappe.utils import validate_email_address
-
-
-import frappe
-from frappe.utils import validate_email_address
-
-
 def update_lead_data(sender_id, message_text):
     lead_name = frappe.db.get_value(
         "Lead",
@@ -123,36 +115,41 @@ def update_lead_data(sender_id, message_text):
     if not value:
         return False
 
-    step_to_field = {
-        "first_name": "first_name",
-        "last_name": "last_name",
-        "phone": "phone",
-    }
-
     step = lead.custom_capture_step
 
     if step == "email":
-        if not validate_email_address(value, throw=False):
+        try:
+            validate_email_address(value, throw=True)
+        except frappe.exceptions.InvalidEmailAddressError:
             return False
 
         lead.email_id = value
         lead.custom_capture_step = "phone"
 
-    elif step in step_to_field:
-        setattr(lead, step_to_field[step], value)
+    elif step == "first_name":
+        lead.first_name = value
+        lead.custom_capture_step = "last_name"
 
-        next_step = {
-            "first_name": "last_name",
-            "last_name": "email",
-            "phone": None,
-        }
-        lead.custom_capture_step = next_step[step]
+    elif step == "last_name":
+        lead.last_name = value
+        lead.custom_capture_step = "email"
+
+    elif step == "phone":
+        lead.phone = value
+        lead.custom_capture_step = None
 
     else:
         return False
 
+    frappe.logger().info(
+        f"Messenger capture: lead={lead.name}, "
+        f"step={lead.custom_capture_step}, "
+        f"email_id={lead.email_id!r}, input={value!r}"
+    )
+
     lead.save(ignore_permissions=True)
     return True
+
 
 
 
