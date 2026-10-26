@@ -18,7 +18,7 @@ def save_message_to_lead(lead_name, message_content):
     try:
         communication = frappe.get_doc({
             "doctype": "Communication",
-            "communication_type": "Chat",
+            "communication_type": "Mensaje automático",
             "subject": "Mensaje recibido vía Messenger",
             "content": message_content,
             "reference_doctype": "Lead",
@@ -163,7 +163,7 @@ def save_bot_response(lead_name, response_text):
 
     communication = frappe.get_doc({
         "doctype": "Communication",
-        "communication_type": "Chat",
+        "communication_type": "Mensaje automático",
         "subject": "Respuesta automática IA",
         "content": response_text,
         "reference_doctype": "Lead",
