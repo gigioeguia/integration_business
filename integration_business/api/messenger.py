@@ -141,91 +141,51 @@ def process_messenger_event(messaging_event):
         )
         return
 
-    frappe.cache().set_value(
-        cache_key,
-        1,
-        expires_in_sec=86400
-    )
-
+    frappe.cache().set_value( cache_key, 1, expires_in_sec=86400)
     message_text = message.get("text")
 
     # Solo texto
     if not message_text:
-
         frappe.logger().info({
             "event": "messenger_non_text_message",
             "sender_id": sender_id,
             "message_id": message_id
         })
-
-        send_messenger_message(
-            sender_id,
-            "Por el momento solo puedo procesar mensajes de texto."
-        )
-
+        send_messenger_message( sender_id, "Por el momento solo puedo procesar mensajes de texto." )
         return
-
     try:
-
         lead_name = None
-
         existing_lead = frappe.db.exists(
             "Lead",
             {
                 "custom_messenger_id": sender_id
             }
         )
-
         if existing_lead:
-
             lead_name = existing_lead
-
-            update_lead_data(
-                sender_id,
-                message_text
-            )
-
+            update_lead_data( sender_id, message_text )
         else:
-
-            lead_name = create_initial_lead(
-                sender_id,
-                message_text
-            )
+            lead_name = create_initial_lead( sender_id )
 
         # Guardar mensaje recibido
-        save_message_to_lead(
-            lead_name,
-            message_text
-        )
+        save_message_to_lead( lead_name, message_text )
 
         # Decidir respuesta
         if is_lead_complete(sender_id):
-
             reply = ask_ai(message_text)
-
             if not reply:
                 reply = (
                     "Lo siento, no pude generar una respuesta "
                     "en este momento."
                 )
-
         else:
-
-            reply = get_next_question(
-                sender_id
-            )
+            reply = get_next_question( sender_id )
 
         # Guardar respuesta
-        save_bot_response(
-            lead_name,
-            reply
-        )
+        save_bot_response( lead_name, reply )
 
         # Enviar respuesta al usuario
-        send_messenger_message(
-            sender_id,
-            reply
-        )
+        send_messenger_message( sender_id, reply )
 
     except Exception:
 
@@ -248,7 +208,6 @@ def process_messenger_event(messaging_event):
 def process_payload(payload):
     if payload.get("object") != "page":
         return
-
     for entry in payload.get("entry", []):
         for messaging_event in entry.get("messaging", []):
             process_messenger_event(messaging_event)
