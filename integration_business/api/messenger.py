@@ -163,7 +163,24 @@ def process_messenger_event(messaging_event):
         )
         if existing_lead:
             lead_name = existing_lead
-            update_lead_data( sender_id, message_text )
+            if should_create_lead(sender_id, message_text):
+                update_lead_data( sender_id, message_text )
+                if not update_lead_data:
+                    step = frappe.db.get_value(
+                        "Lead",
+                        {"custom_messenger_id": sender_id},
+                        "custom_capture_step"
+                    )
+                    if step == "email":
+                        reply = "Ese correo no parece válido. Por favor, escríbelo nuevamente."
+                    elif step == "phone":
+                        reply = "No pude registrar ese teléfono. Por favor, escríbelo nuevamente."
+                    else:
+                        reply = get_next_question(sender_id)
+
+                    save_bot_response(lead_name, reply)
+                    send_messenger_message(sender_id, reply)
+                    return
         else:
             lead_name = create_initial_lead( sender_id )
 

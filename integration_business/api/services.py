@@ -1,6 +1,8 @@
 import frappe
 import requests
 
+from frappe.utils import validate_email_address
+
 from .utils import get_email_from_message, get_phone_from_message
 
 GRAPH_API_VERSION = "v26.0"
@@ -98,62 +100,46 @@ def create_initial_lead(sender_id):
 """
 actualizar los datos de un Lead existente cuando recibe un nuevo mensaje desde Messenger
 """
-def update_lead_data(sender_id, message_text):
+import frappe
+from frappe.utils import validate_email_address
 
+
+def update_lead_data(sender_id, message_text):
     lead_name = frappe.db.get_value(
         "Lead",
         {"custom_messenger_id": sender_id},
         "name"
     )
-
     if not lead_name:
-        return
+        return False
 
-    lead = frappe.get_doc(
-        "Lead",
-        lead_name
-    )
+    lead = frappe.get_doc("Lead", lead_name)
+    value = (message_text or "").strip()
 
-    step = lead.custom_capture_step
+    if not value:
+        return False
 
-    if step == "first_name":
+    if lead.custom_capture_step == "email":
+        if not validate_email_address(value, throw=False):
+            return False
 
-        lead.first_name = message_text.strip()
-        lead.custom_capture_step = "last_name"
-
-    elif step == "last_name":
-
-        lead.last_name = message_text.strip()
-        lead.custom_capture_step = "email"
-
-    elif step == "email":
-
-        lead.email_id = message_text.strip()
+        lead.email_id = value
         lead.custom_capture_step = "phone"
 
-    elif step == "phone":
-
-        lead.mobile_no = message_text.strip()
-        lead.custom_capture_step = "completed"
+    # Conserva aquí tus otros casos: first_name, last_name y phone.
 
     lead.save(ignore_permissions=True)
+    return True
 
-    frappe.db.commit()
 
 """
 filtro de validación para decidir si ya existe suficiente información para crear un Lead
 """
 def should_create_lead(sender_id, message_text):
-
     email = get_email_from_message(message_text)
     phone = get_phone_from_message(message_text)
-
-    if not email:
+    if not email or not phone:
         return False
-
-    if not phone:
-        return False
-
     return True
 
 """
