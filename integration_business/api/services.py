@@ -18,7 +18,7 @@ def save_message_to_lead(lead_name, message_content):
     try:
         communication = frappe.get_doc({
             "doctype": "Communication",
-            "communication_type": "Mensaje automático",
+            "communication_type": "Comunicaciones",
             "subject": "Mensaje recibido vía Messenger",
             "content": message_content,
             "reference_doctype": "Lead",
