@@ -112,9 +112,7 @@ def extract_customer_data(message):
         ejecuta send_messenger_message con el resultado        
 """
 def process_messenger_event(messaging_event):
-
     sender_id = messaging_event.get("sender", {}).get("id")
-
     if not sender_id:
         return
 
@@ -125,23 +123,18 @@ def process_messenger_event(messaging_event):
         return
 
     message_id = message.get("mid")
-
     if not message_id:
-        frappe.logger().warning(
-            "Messenger message without mid"
-        )
+        frappe.logger().warning("Messenger message without mid")
         return
 
     # Deduplicación
     cache_key = f"messenger_message:{message_id}"
-
     if frappe.cache().get_value(cache_key):
         frappe.logger().info(
             f"Duplicate Messenger message ignored: {message_id}"
         )
         return
 
-    frappe.cache().set_value( cache_key, 1, expires_in_sec=86400)
     message_text = message.get("text")
 
     # Solo texto
@@ -149,43 +142,60 @@ def process_messenger_event(messaging_event):
         frappe.logger().info({
             "event": "messenger_non_text_message",
             "sender_id": sender_id,
-            "message_id": message_id
+            "message_id": message_id,
         })
-        send_messenger_message( sender_id, "Por el momento solo puedo procesar mensajes de texto." )
+        send_messenger_message(
+            sender_id,
+            "Por el momento solo puedo procesar mensajes de texto."
+        )
+        frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
         return
+
     try:
-        lead_name = None
         existing_lead = frappe.db.exists(
             "Lead",
-            {
-                "custom_messenger_id": sender_id
-            }
+            {"custom_messenger_id": sender_id},
         )
+
         if existing_lead:
             lead_name = existing_lead
+
             if should_create_lead(sender_id, message_text):
-                update_lead_data( sender_id, message_text )
-                if not update_lead_data:
+                updated = update_lead_data(sender_id, message_text)
+
+                if not updated:
                     step = frappe.db.get_value(
                         "Lead",
                         {"custom_messenger_id": sender_id},
-                        "custom_capture_step"
+                        "custom_capture_step",
                     )
+
                     if step == "email":
-                        reply = "Ese correo no parece válido. Por favor, escríbelo nuevamente."
+                        reply = (
+                            "Ese correo no parece válido. "
+                            "Por favor, escríbelo nuevamente."
+                        )
                     elif step == "phone":
-                        reply = "No pude registrar ese teléfono. Por favor, escríbelo nuevamente."
+                        reply = (
+                            "No pude registrar ese teléfono. "
+                            "Por favor, escríbelo nuevamente."
+                        )
                     else:
                         reply = get_next_question(sender_id)
 
                     save_bot_response(lead_name, reply)
                     send_messenger_message(sender_id, reply)
+
+                    # Se procesó y respondió; evitar duplicar la respuesta.
+                    frappe.cache().set_value(
+                        cache_key, 1, expires_in_sec=86400
+                    )
                     return
         else:
-            lead_name = create_initial_lead( sender_id )
+            lead_name = create_initial_lead(sender_id)
 
         # Guardar mensaje recibido
-        save_message_to_lead( lead_name, message_text )
+        save_message_to_lead(lead_name, message_text)
 
         # Decidir respuesta
         if is_lead_complete(sender_id):
@@ -196,19 +206,19 @@ def process_messenger_event(messaging_event):
                     "en este momento."
                 )
         else:
-            reply = get_next_question( sender_id )
+            reply = get_next_question(sender_id)
 
-        # Guardar respuesta
-        save_bot_response( lead_name, reply )
+        # Guardar y enviar respuesta
+        save_bot_response(lead_name, reply)
+        send_messenger_message(sender_id, reply)
 
-        # Enviar respuesta al usuario
-        send_messenger_message( sender_id, reply )
+        # Marcar como procesado después de completar el flujo
+        frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
 
     except Exception:
-
         frappe.log_error(
             title="Messenger Event Error",
-            message=frappe.get_traceback()
+            message=frappe.get_traceback(),
         )
 
         send_messenger_message(
@@ -216,8 +226,9 @@ def process_messenger_event(messaging_event):
             (
                 "Ocurrió un error al procesar tu mensaje. "
                 "Por favor intenta nuevamente más tarde."
-            )
+            ),
         )
+
 
 """ 1er step:
     si todo ok, continua process_messenger_event

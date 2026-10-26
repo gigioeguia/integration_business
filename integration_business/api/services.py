@@ -104,11 +104,15 @@ import frappe
 from frappe.utils import validate_email_address
 
 
+import frappe
+from frappe.utils import validate_email_address
+
+
 def update_lead_data(sender_id, message_text):
     lead_name = frappe.db.get_value(
         "Lead",
         {"custom_messenger_id": sender_id},
-        "name"
+        "name",
     )
     if not lead_name:
         return False
@@ -119,17 +123,37 @@ def update_lead_data(sender_id, message_text):
     if not value:
         return False
 
-    if lead.custom_capture_step == "email":
+    step_to_field = {
+        "first_name": "first_name",
+        "last_name": "last_name",
+        "phone": "phone",
+    }
+
+    step = lead.custom_capture_step
+
+    if step == "email":
         if not validate_email_address(value, throw=False):
             return False
 
         lead.email_id = value
         lead.custom_capture_step = "phone"
 
-    # Conserva aquí tus otros casos: first_name, last_name y phone.
+    elif step in step_to_field:
+        setattr(lead, step_to_field[step], value)
+
+        next_step = {
+            "first_name": "last_name",
+            "last_name": "email",
+            "phone": None,
+        }
+        lead.custom_capture_step = next_step[step]
+
+    else:
+        return False
 
     lead.save(ignore_permissions=True)
     return True
+
 
 
 """
