@@ -156,7 +156,7 @@ def process_messenger_event(messaging_event):
             "Lead",
             {"custom_messenger_id": sender_id},
         )
-        if existing_lead == None:
+        if not existing_lead:
             existing_lead = get_user_profile(sender_id)
 
         if existing_lead:
