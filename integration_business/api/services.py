@@ -119,7 +119,9 @@ def update_lead_data(sender_id, message_text):
 
     if step == "email":
         try:
-            validate_email_address(value, throw=True)
+            value = get_email_from_message(value)
+            if value != None:
+                validate_email_address(value, throw=True)
         except frappe.exceptions.InvalidEmailAddressError:
             return False
 
@@ -145,6 +147,11 @@ def update_lead_data(sender_id, message_text):
         f"Messenger capture: lead={lead.name}, "
         f"step={lead.custom_capture_step}, "
         f"email_id={lead.email_id!r}, input={value!r}"
+    )
+    
+    frappe.logger().error(
+        f"Antes de guardar Lead {lead.name}: "
+        f"step={step!r}, email_id={lead.email_id!r}, input={value!r}"
     )
 
     lead.save(ignore_permissions=True)
