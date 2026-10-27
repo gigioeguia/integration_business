@@ -6,7 +6,7 @@ from openai import OpenAI
 from werkzeug.wrappers import Response
 
 from .services import update_lead_data, should_create_lead, save_bot_response, create_initial_lead, \
-    send_messenger_message, is_lead_complete, save_message_to_lead, get_next_question
+    send_messenger_message, is_lead_complete, save_message_to_lead, get_next_question, get_user_profile
 
 """ Obtener el token verificacion de meta-facebook """
 def get_verify_token():
@@ -156,6 +156,8 @@ def process_messenger_event(messaging_event):
             "Lead",
             {"custom_messenger_id": sender_id},
         )
+        if existing_lead == None:
+            existing_lead = get_user_profile(sender_id)
 
         if existing_lead:
             lead_name = existing_lead
