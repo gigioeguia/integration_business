@@ -28,8 +28,7 @@ def process_chat_message(channel, message_id, session_id, page_id, message):
             }
         ],
     }
-    ## process_messenger_event(payload)
-    return 'hola'; 
+    return process_messenger_event(payload); 
 
 
 @frappe.whitelist(allow_guest=True)
