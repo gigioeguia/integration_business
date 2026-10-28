@@ -219,13 +219,16 @@ def send_messenger_message(recipient_id, text):
 """
 revisar qué campos obligatorios faltan y devolver la siguiente pregunta correspondiente
 """
-def get_next_question(sender_id):
+def get_next_question(sender_id, lead):
 
-    lead_name = frappe.db.get_value(
-        "Lead",
-        {"custom_messenger_id": sender_id},
-        "name"
-    )
+    if not lead.name:
+        lead_name = frappe.db.get_value(
+            "Lead",
+            {"custom_messenger_id": sender_id},
+            "name"
+        )
+    else:
+        lead_name = lead.name    
 
     if not lead_name:
         return "¿Cuál es tu nombre?"
