@@ -7,7 +7,7 @@ from .services import update_lead_data, should_create_lead, save_bot_response, c
 
 def process_messenger_event(messaging_event):
     sender_id = messaging_event.get("sender", {}).get("id")
-    frappe.logger("process_messenger_event").info(f"El valor sender_id: {sender_id}")
+    frappe.logger("process_messenger_event").error(f"El valor sender_id: {sender_id}")
     if not sender_id:
         return
 
