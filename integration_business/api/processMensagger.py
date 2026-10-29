@@ -86,7 +86,12 @@ def extract_customer_data(message):
     return response.choices[0].message.content
 
 def process_messenger_event(messaging_event):
+    frappe.log_error(
+                title="Messenger Event Error",
+                message= f"messaging_event {messaging_event} ",
+            )
     sender_id = messaging_event.get("sender", {}).get("id")
+    
     if not sender_id:
         return {"reply": None, "status": "ignored", "reason": "missing_sender_id"}
 
