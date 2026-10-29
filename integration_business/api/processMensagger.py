@@ -2,8 +2,88 @@ import re
 import requests
 import frappe
 
+from openai import OpenAI
+
 from .services import update_lead_data, should_create_lead, save_bot_response, create_initial_lead, \
     send_messenger_message, is_lead_complete, save_message_to_lead, get_next_question, get_user_profile
+
+def ask_ai(message):
+
+    chatbot = frappe.get_single(
+        "WhatsApp Chatbot"
+    )
+
+    if not chatbot.enable_ai:
+        return chatbot.default_response
+
+    if not chatbot.ai_api_key:
+        return chatbot.default_response
+
+    try:
+
+        client = OpenAI(
+            api_key=chatbot.ai_api_key
+        )
+
+        response = client.chat.completions.create(
+            model=chatbot.ai_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": chatbot.ai_system_prompt or ""
+                },
+                {
+                    "role": "user",
+                    "content": message
+                }
+            ],
+            temperature=chatbot.ai_temperature or 0.7,
+            max_tokens=chatbot.ai_max_tokens or 500
+        )
+
+        return response.choices[0].message.content
+
+    except Exception:
+
+        frappe.log_error(
+            title="OpenAI Error",
+            message=frappe.get_traceback()
+        )
+
+        return chatbot.default_response
+
+def extract_customer_data(message):
+
+    chatbot = frappe.get_single(
+        "WhatsApp Chatbot"
+    )
+
+    client = OpenAI(
+        api_key=chatbot.ai_api_key
+    )
+
+    response = client.chat.completions.create(
+        model=chatbot.ai_model,
+        messages=[
+            {
+                "role": "system",
+                "content": """
+                Extrae:
+                - nombre
+                - correo
+                - telefono
+
+                Devuelve JSON.
+                """
+            },
+            {
+                "role": "user",
+                "content": message
+            }
+        ]
+    )
+
+    return response.choices[0].message.content
 
 def process_messenger_event(messaging_event):
     sender_id = messaging_event.get("sender", {}).get("id")
