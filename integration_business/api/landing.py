@@ -38,11 +38,11 @@ def capture():
         return {"hola":"hola"}
         
     if frappe.request.method == "POST": 
-        payload = frappe.request.get_json(silent=True)
-        message=payload.message
-        session_id=payload.session_id
-        page_id=payload.page_id
-        message_id=payload.message_id
+        payload = frappe.request.get_json(silent=True) or {}
+        message = (payload.get("message") or "").strip()
+        session_id = payload.get("session_id")
+        page_id = payload.get("page_id")
+        message_id = payload.get("message_id") or str(uuid.uuid4())
            
         message = (message or "").strip()
 
