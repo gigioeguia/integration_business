@@ -137,28 +137,17 @@ def update_lead_data(sender_id, message_text):
         lead.custom_capture_step = "email"
 
     elif step == "phone":
-        lead.phone = value
-        lead.custom_capture_step = None
-
+        try:
+            lead.phone = get_phone_from_message( value )
+            lead.custom_capture_step = None
+        except frappe.exceptions.InvalidEmailAddressError:
+            return False                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+        lead.custom_capture_step = "phone"
     else:
         return False
 
-    frappe.logger().info(
-        f"Messenger capture: lead={lead.name}, "
-        f"step={lead.custom_capture_step}, "
-        f"email_id={lead.email_id!r}, input={value!r}"
-    )
-    
-    frappe.logger().error(
-        f"Antes de guardar Lead {lead.name}: "
-        f"step={step!r}, email_id={lead.email_id!r}, input={value!r}"
-    )
-
     lead.save(ignore_permissions=True)
     return True
-
-
-
 
 """
 filtro de validación para decidir si ya existe suficiente información para crear un Lead
