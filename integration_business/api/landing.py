@@ -26,7 +26,7 @@ def capture():
     if frappe.request.method == "POST": 
         payload = frappe.request.get_json(silent=True) or {}
           
-        message = (message or "").strip()
+        message = (payload.get("message") or "").strip()
 
         if not message or not payload.get("session_id") or not payload.get("page_id"):
             frappe.throw(
