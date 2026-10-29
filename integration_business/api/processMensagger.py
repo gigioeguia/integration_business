@@ -86,112 +86,90 @@ def extract_customer_data(message):
     return response.choices[0].message.content
 
 def process_messenger_event(messaging_event):
-        
     sender_id = messaging_event.get("sender", {}).get("id")
-    frappe.logger("process_messenger_event").error(f"El valor sender_id: {sender_id}")
     if not sender_id:
-        return
+        return {"reply": None, "status": "ignored", "reason": "missing_sender_id"}
 
-    message = messaging_event.get("message", {})
+    message = messaging_event.get("message") or {}
 
-    # Evitar loops de Messenger
     if message.get("is_echo"):
-        return
+        return {"reply": None, "status": "ignored", "reason": "echo"}
 
     message_id = message.get("mid")
     if not message_id:
         frappe.logger().warning("Messenger message without mid")
-        return
+        return {"reply": None, "status": "ignored", "reason": "missing_mid"}
 
-    # Deduplicación
     cache_key = f"messenger_message:{message_id}"
     if frappe.cache().get_value(cache_key):
-        frappe.logger().info(
-            f"Duplicate Messenger message ignored: {message_id}"
-        )
-        return
+        return {"reply": None, "status": "ignored", "reason": "duplicate"}
 
     message_text = message.get("text")
 
-    # Solo texto
     if not message_text:
-        frappe.logger().info({
-            "event": "messenger_non_text_message",
-            "sender_id": sender_id,
-            "message_id": message_id,
-        })
-        send_messenger_message(
-            sender_id,
-            "Por el momento solo puedo procesar mensajes de texto."
-        )
+        reply = "Por el momento solo puedo procesar mensajes de texto."
+        send_messenger_message(sender_id, reply)
         frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
-        return
+        return {"reply": reply, "status": "ok"}
 
     try:
-        existing_id_lead = frappe.db.exists(
+        lead_name = frappe.db.exists(
             "Lead",
             {"custom_messenger_id": sender_id},
         )
-        if not existing_id_lead:
-            lead_name = get_user_profile(sender_id)
-        else:     
-            lead_name = frappe.get_doc("Lead", existing_id_lead)
-            
+
         if lead_name:
-            updated = update_lead_data(sender_id, message_text)
-
-            if not updated:
-                step = frappe.db.get_value(
-                    "Lead",
-                    {"custom_messenger_id": sender_id},
-                    "custom_capture_step",
-                )
-
-                if step == "email":
-                    reply = "Ese correo no parece válido. Por favor, escríbelo nuevamente."
-                elif step == "phone":
-                    reply = "No pude registrar ese teléfono. Por favor, escríbelo nuevamente."
-                else:
-                    reply = get_next_question(sender_id, lead_name)
-               
-                save_bot_response(lead_name.name, reply)
-                send_messenger_message(sender_id, reply)
-                frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
-                return
+            lead_doc = frappe.get_doc("Lead", lead_name)
         else:
-            lead_name = create_initial_lead(sender_id)
+            lead_doc = create_initial_lead(sender_id)
+            # Si create_initial_lead devuelve un nombre y no un documento:
+            if isinstance(lead_doc, str):
+                lead_doc = frappe.get_doc("Lead", lead_doc)
 
-        # Guardar mensaje recibido
-        save_message_to_lead(lead_name, message_text)
+        updated = update_lead_data(sender_id, message_text)
 
-        # Decidir respuesta
+        if not updated:
+            step = frappe.db.get_value(
+                "Lead",
+                lead_doc.name,
+                "custom_capture_step",
+            )
+
+            if step == "email":
+                reply = "Ese correo no parece válido. Por favor, escríbelo nuevamente."
+            elif step == "phone":
+                reply = "No pude registrar ese teléfono. Por favor, escríbelo nuevamente."
+            else:
+                reply = get_next_question(sender_id, lead_doc)
+
+            save_bot_response(lead_doc.name, reply)
+            send_messenger_message(sender_id, reply)
+            frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
+            return {"reply": reply, "status": "ok"}
+
+        save_message_to_lead(lead_doc, message_text)
+
         if is_lead_complete(sender_id):
-            reply = ask_ai(message_text)
-            if not reply:
-                reply = (
-                    "Lo siento, no pude generar una respuesta "
-                    "en este momento."
-                )
+            reply = ask_ai(message_text) or (
+                "Lo siento, no pude generar una respuesta en este momento."
+            )
         else:
-            reply = get_next_question(sender_id)
+            reply = get_next_question(sender_id, lead_doc)
 
-        # Guardar y enviar respuesta
-        save_bot_response(lead_name, reply)
+        save_bot_response(lead_doc.name, reply)
         send_messenger_message(sender_id, reply)
-
-        # Marcar como procesado después de completar el flujo
         frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
-        
-        return reply
+
+        return {"reply": reply, "status": "ok"}
+
     except Exception:
         frappe.log_error(
             title="Messenger Event Error",
             message=frappe.get_traceback(),
         )
-        send_messenger_message(
-            sender_id,
-            (
-                "Ocurrió un error al procesar tu mensaje. "
-                "Por favor intenta nuevamente más tarde."
-            ),
+        reply = (
+            "Ocurrió un error al procesar tu mensaje. "
+            "Por favor intenta nuevamente más tarde."
         )
+        send_messenger_message(sender_id, reply)
+        return {"reply": reply, "status": "error"}
