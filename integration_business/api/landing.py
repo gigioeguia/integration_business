@@ -32,23 +32,34 @@ def process_chat_message(channel, message_id, session_id, page_id, message):
 
 
 @frappe.whitelist(allow_guest=True)
-def capture(message=None, session_id=None, page_id=None, message_id=None):
-    message = (message or "").strip()
+def capture():
+    
+    if frappe.request.method == "GET":
+        return {"hola":"hola"}
+        
+    if frappe.request.method == "POST": 
+        payload = frappe.request.get_json(silent=True)
+        message=payload.message
+        session_id=payload.session_id
+        page_id=payload.page_id
+        message_id=payload.message_id
+           
+        message = (message or "").strip()
 
-    if not message or not session_id or not page_id:
-        frappe.throw(
-            "Faltan el mensaje, el identificador de sesión o el identificador de página."
+        if not message or not session_id or not page_id:
+            frappe.throw(
+                "Faltan el mensaje, el identificador de sesión o el identificador de página."
+            )
+
+        if not message_id:
+            message_id = str(uuid.uuid4())
+
+        reply = process_chat_message(
+            channel="web",
+            message_id=message_id,
+            session_id=session_id,
+            page_id=page_id,
+            message=message,
         )
 
-    if not message_id:
-        message_id = str(uuid.uuid4())
-
-    reply = process_chat_message(
-        channel="web",
-        message_id=message_id,
-        session_id=session_id,
-        page_id=page_id,
-        message=message,
-    )
-
-    return {"reply": reply}
+        return {"reply": reply}
