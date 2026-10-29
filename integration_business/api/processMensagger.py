@@ -90,6 +90,9 @@ def process_messenger_event(messaging_event):
                 title="Messenger Event Error",
                 message= f"messaging_event {messaging_event} ",
             )
+    
+    channel = messaging_event.get("channel", None)
+
     sender_id = messaging_event.get("sender", {}).get("id")
     
     if not sender_id:
@@ -113,7 +116,9 @@ def process_messenger_event(messaging_event):
 
     if not message_text:
         reply = "Por el momento solo puedo procesar mensajes de texto."
-        send_messenger_message(sender_id, reply)
+        if channel == None:
+            send_messenger_message(sender_id, reply)
+        
         frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
         return {"reply": reply, "status": "ok"}
 
@@ -148,7 +153,8 @@ def process_messenger_event(messaging_event):
                 reply = get_next_question(sender_id, lead_doc)
 
             save_bot_response(lead_doc.name, reply)
-            send_messenger_message(sender_id, reply)
+            if channel == None:
+                send_messenger_message(sender_id, reply)
             frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
             return {"reply": reply, "status": "ok"}
 
@@ -162,7 +168,8 @@ def process_messenger_event(messaging_event):
             reply = get_next_question(sender_id, lead_doc)
 
         save_bot_response(lead_doc.name, reply)
-        send_messenger_message(sender_id, reply)
+        if channel == None:
+            send_messenger_message(sender_id, reply)
         frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
 
         return {"reply": reply, "status": "ok"}
@@ -176,5 +183,6 @@ def process_messenger_event(messaging_event):
             "Ocurrió un error al procesar tu mensaje. "
             "Por favor intenta nuevamente más tarde."
         )
-        send_messenger_message(sender_id, reply)
+        if channel == None:
+            send_messenger_message(sender_id, reply)
         return {"reply": reply, "status": "error"}
