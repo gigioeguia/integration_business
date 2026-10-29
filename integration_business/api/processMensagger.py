@@ -181,13 +181,13 @@ def process_messenger_event(messaging_event):
 
         # Marcar como procesado después de completar el flujo
         frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
-
+        
+        return reply
     except Exception:
         frappe.log_error(
             title="Messenger Event Error",
             message=frappe.get_traceback(),
         )
-
         send_messenger_message(
             sender_id,
             (
