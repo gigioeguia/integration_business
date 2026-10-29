@@ -9,25 +9,12 @@ def process_chat_message(channel, message_id, session_id, page_id, message):
     timestamp = int(time.time() * 1000)
 
     payload = {
-        "object": channel,
-        "entry": [
-            {
-                "id": page_id,
-                "time": timestamp,
-                "messaging": [
-                    {
-                        "sender": {"id": session_id},
-                        "recipient": {"id": page_id},
-                        "timestamp": timestamp,
-                        "message": {
-                            "mid": message_id,
-                            "text": message,
-                        },
-                    }
-                ],
-            }
-        ],
+        'sender': {'id': session_id}, 
+        'recipient': {'id': page_id}, 
+        'timestamp': timestamp, 
+        'message': {'mid': message_id, 'text': message}
     }
+    
     return process_messenger_event(payload); 
 
 
