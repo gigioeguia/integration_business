@@ -127,15 +127,16 @@ def process_messenger_event(messaging_event):
         return
 
     try:
-        existing_lead = frappe.db.exists(
+        existing_id_lead = frappe.db.exists(
             "Lead",
             {"custom_messenger_id": sender_id},
         )
-        if not existing_lead:
-            existing_lead = get_user_profile(sender_id)
-
-        if existing_lead:
-            lead_name = existing_lead
+        if not existing_id_lead:
+            lead_name = get_user_profile(sender_id)
+        else:     
+            lead_name = frappe.get_doc("Lead", existing_id_lead)
+            
+        if lead_name:
             updated = update_lead_data(sender_id, message_text)
 
             if not updated:
@@ -150,7 +151,7 @@ def process_messenger_event(messaging_event):
                 elif step == "phone":
                     reply = "No pude registrar ese teléfono. Por favor, escríbelo nuevamente."
                 else:
-                    reply = get_next_question(sender_id, existing_lead)
+                    reply = get_next_question(sender_id, lead_name)
 
                 save_bot_response(lead_name, reply)
                 send_messenger_message(sender_id, reply)
