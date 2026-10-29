@@ -152,13 +152,7 @@ def process_messenger_event(messaging_event):
                     reply = "No pude registrar ese teléfono. Por favor, escríbelo nuevamente."
                 else:
                     reply = get_next_question(sender_id, lead_name)
-
-                frappe.log_error(
-                    title="Messenger Event Error",
-                    message=f"lead_name.name {lead_name.name} lead_name {lead_name}",
-                )
-                
-
+               
                 save_bot_response(lead_name.name, reply)
                 send_messenger_message(sender_id, reply)
                 frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
