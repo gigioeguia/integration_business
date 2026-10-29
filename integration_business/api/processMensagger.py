@@ -153,7 +153,7 @@ def process_messenger_event(messaging_event):
                 else:
                     reply = get_next_question(sender_id, lead_name)
 
-                save_bot_response(lead_name, reply)
+                save_bot_response(lead_name.name, reply)
                 send_messenger_message(sender_id, reply)
                 frappe.cache().set_value(cache_key, 1, expires_in_sec=86400)
                 return
