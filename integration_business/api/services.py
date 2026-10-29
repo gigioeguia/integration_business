@@ -16,7 +16,7 @@ def get_page_access_token():
 """
 crea un registro de tipo Communication
 """
-def save_message_to_lead(lead_name, message_content):
+def save_message_to_lead(lead, message_content):
     try:
         communication = frappe.get_doc({
             "doctype": "Communication",
@@ -24,7 +24,7 @@ def save_message_to_lead(lead_name, message_content):
             "subject": "Mensaje recibido vía Messenger",
             "content": message_content,
             "reference_doctype": "Lead",
-            "reference_name": lead_name,
+            "reference_name": lead.name,
             "status": "Linked",
             "sent_or_received": "Received"
         })
